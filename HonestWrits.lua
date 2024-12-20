@@ -3,10 +3,7 @@
 
 local Addon = {
     name = "HonestWrits",
-    version = "0.1",
-    date = "2024-12-14",
     title = "Honest Writs",
-    authors = "Serious Angel",
     init = false,
     options = {},
 
@@ -22,9 +19,7 @@ local defaultOptions = {
     }
 }
 
-Addon.stations = {
-    alchemy = nil
-}
+Addon.stations = {}
 
 -- Functions (General)
 ----------------------------------------------------------------
@@ -35,11 +30,6 @@ end
 
 local function _PrintFA(msg)
     printC(string.format("|c333333[Honest Writs] |c888888" .. Addon.title .. "|c333333:|r %s", msg))
-end
-
-local function notification(msg)
-    CENTER_SCREEN_ANNOUNCE:AddMessage(999, CSA_EVENT_LARGE_TEXT, snd, msg)
-    ZO_Alert(UI_ALERT_CATEGORY_ALERT, nil, msg)
 end
 
 -- Functions
@@ -61,9 +51,14 @@ local function InitializeOptions(...)
 
     local optionsData={
         {
+            type = "header",
+            name = "Writs at Crafting Stations",
+            reference = "MyAddonHeader"
+        },
+        {
             type = "checkbox",
             name = "Alchemy",
-            tooltip = "Hide writ quest pins on alchemy crafting stations.",
+            tooltip = "Hide quest pins for ingredients.",
             default = true,
             getFunc = function() return Addon.options["STATIONS"]["ALCHEMY"] end,
             setFunc = function(value) Addon.options["STATIONS"]["ALCHEMY"] = value end,
@@ -71,7 +66,7 @@ local function InitializeOptions(...)
         {
             type = "checkbox",
             name = "Enchanting",
-            tooltip = "Hide writ quest pins on enchanting crafting stations.",
+            tooltip = "Hide quest pins for runes.",
             default = true,
             getFunc = function() return Addon.options["STATIONS"]["ENCHANTING"] end,
             setFunc = function(value) Addon.options["STATIONS"]["ENCHANTING"] = value end,
@@ -89,8 +84,6 @@ local function SetAlchemyCraftingStationHooks()
     end
 
     if Addon.stations.alchemy._honestWrits then
-        -- _PrintFA("[ ] Alchemy hooks are set already.")
-
         return true
     end
 
@@ -148,8 +141,6 @@ local function SetAlchemyCraftingStationHooks()
         questPin:SetHidden(true)
     end)
 
-    _PrintFA("[+] Set alchemy station hooks")
-
     alchemyStation._honestWrits = true
 
     return true
@@ -163,8 +154,6 @@ local function SetEnchantingCraftingStationHooks()
     end
 
     if Addon.stations.enchanting._honestWrits then
-        -- _PrintFA("[ ] Enchanting hooks are set already.")
-
         return true
     end
 
@@ -207,8 +196,6 @@ local function SetEnchantingCraftingStationHooks()
         questPin:SetHidden(true)
     end)
 
-    _PrintFA("[+] Set enchanting station hooks")
-
     enchantingStation._honestWrits = true
 
     return true
@@ -250,7 +237,13 @@ EVENT_MANAGER:RegisterForEvent(Addon.name .. "_OnAddonLoaded", EVENT_ADD_ON_LOAD
     end
 
     InitializeOptions()
-    SetHooks()
+
+    local enabledStations = Addon.options["STATIONS"]
+
+    -- If enabled for any station
+    if enabledStations["ALCHEMY"] or enabledStations["ENCHANTING"] then
+        SetHooks()
+    end
 
     Addon.init = true
 
