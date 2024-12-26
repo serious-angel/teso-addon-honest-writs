@@ -1,9 +1,9 @@
-## DependsOn: ZO_Ingame LibAddonMenu-2.0>=32
-## APIVersion: 101034 101035
+## DependsOn: LibAddonMenu-2.0>=37
+## APIVersion: 101044
 ## SavedVariables: HonestWritsSavedVars
 ## Title: |c9966FFHonestWrits|r
 ## Author: |c9966FFSerious Angel|r
-## Version: 0.2
+## Version: 0.3
 ## Description: Let it be more fair, honest writs!
 
 HonestWrits.lua
