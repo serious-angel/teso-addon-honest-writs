@@ -23,6 +23,7 @@ _Main()
         return 2;
     fi
 
+    # Manifest
     # --------------------------------
     # Manifest directory
     # ----------------
@@ -53,13 +54,15 @@ _Main()
 
     declare version;
 
-    if ! version="$( perl -ne 'print /^## Version:\s+([A-Za-z0-9\._-]+)$/' -- "$manifestFilepath"; )";
+    if ! version="$( perl -ne 'print /^## Version:\s+([0-9]+)\s*$/' -- "$manifestFilepath"; )";
     then
         printf -- $'\n [-] Failed to find the version in manifest: \'%s\'.\n\n' "$manifestFilepath";
 
         return 1;
     fi
 
+    # Archive
+    # --------------------------------
     # Find addon files
     # ----------------
 
@@ -137,6 +140,9 @@ _Main()
 
     # Done
     # ----------------
+
+    printf -- $' [+] Created archive for addon \'%s\' (v%s).\n' "$addonName" "$version";
+    printf -- $' [ ] Filepath: \'%s\'.\n' "$archiveFilepath";
 
     7za l -t7z -bb0 -bso0 -- "$archiveFilepath";
 }

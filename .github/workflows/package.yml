@@ -11,26 +11,73 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
+    env:
+      ADDON_MANIFEST_FILEPATH: "${{ github.workspace }}/HonestWrits.txt"
+
     steps:
       - id: checkout
         name: 'Checkout'
         uses: 'actions/checkout@v4'
 
+      - id: verify-source
+        name: 'Verify source'
+        run: |
+          if ! addonVersion="$( perl -ne 'print /^## Version:\s+([0-9]+)\s*$/' -- "$ADDON_MANIFEST_FILEPATH"; )";
+          then
+              printf -- $'Failed to find the addon version in manifest: \'%s\'.\n' "$ADDON_MANIFEST_FILEPATH";
+
+              exit 1;
+          fi
+
+          tagName="${{ github.ref_name }}";
+          tagNameNormalized="${tagName//\.}";
+
+          if [[ "v${addonVersion}" != "$tagNameNormalized" ]];
+          then
+            printf $'Addon source version \'%s\' mismatches the release tag: \'%s\' (%s).\n' \
+              "$addonVersion" "$tagName" "$tagNameNormalized";
+
+            exit 1;
+          fi
+
       - id: build
         name: 'Build'
         run: |
-          # printf '%s\n' "${{ github.sha }}" > ./Release;
-
-          mkdir -- /opt/release;
-          cd -- /opt/release/;
+          mkdir -- '/opt/build';
+          cd -- '/opt/build/';
 
           bash -- "${GITHUB_WORKSPACE}/.project/scripts/pack.sh" "${GITHUB_WORKSPACE}/HonestWrits.txt";
 
           ls -la;
 
-      - id: release
-        name: 'Release'
+          printf 'build_filepath=%s\n' "$( readlink -e -- ./*.zip | head -n 1; )" >> "$GITHUB_OUTPUT";
+
+      - id: verify-build
+        name: 'Verify build'
+        run: |
+          addonFilepath="${{ steps.build.outputs.build_filepath }}";
+          addonFilename="$( basename -- "$addonFilepath" '.zip'; )";
+          addonVersion="v${addonFilename##*v}";
+          tagName="${{ github.ref_name }}";
+          tagNameNormalized="${tagName//\.}";
+
+          if [[ "$addonVersion" != "$tagNameNormalized" ]];
+          then
+            printf $'Addon build version \'%s\' mismatches the release tag: \'%s\' (%s).\n' \
+              "$addonVersion" "$tagName" "$tagNameNormalized";
+
+            exit 1;
+          fi
+
+      - id: prepare-release
+        name: 'Prepare release'
+        run: |
+          mkdir -- '/opt/release';
+          mv -- "${{ steps.build.outputs.build_filepath }}" '/opt/release/';
+
+      - id: publish
+        name: 'Publish'
         uses: 'softprops/action-gh-release@v2'
         with:
           name: "Honest Writs ${{ github.ref_name }}"
-          files: '/opt/release/*.zip'
+          files: '/opt/release/*'

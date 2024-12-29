@@ -24,25 +24,18 @@ Addon.stations = {}
 -- Functions (General)
 ----------------------------------------------------------------
 
-local function printC(msg)
-    CHAT_SYSTEM:AddMessage(msg)
-end
-
-local function _PrintFA(msg)
-    printC(string.format("|c333333[Honest Writs] |c888888" .. Addon.title .. "|c333333:|r %s", msg))
+local function _P(msg)
+    CHAT_SYSTEM:AddMessage(string.format("|c333333[Honest Writs] |c888888" .. Addon.title .. "|c333333:|r %s", msg))
 end
 
 -- Functions
 ----------------------------------------------------------------
 
--- @dependsOn LibAddonMenu (v2.0)
 local function InitializeOptions(...)
     LibAddonMenu2:RegisterAddonPanel(Addon.name .. "_Config", {
         type = "panel",
         name = Addon.name,
         displayName = "|cFFFFFF" .. Addon.title .. "|r",
-        author = tostring(Addon.authors),
-        version = tostring(Addon.version),
         registerForRefresh = true,
         registerForDefaults = true
     })
@@ -53,7 +46,6 @@ local function InitializeOptions(...)
         {
             type = "header",
             name = "Writs at Crafting Stations",
-            reference = "MyAddonHeader"
         },
         {
             type = "checkbox",
@@ -78,7 +70,7 @@ end
 
 local function SetAlchemyCraftingStationHooks()
     if not Addon.stations.alchemy then
-        _PrintFA("[-] No alchemy station found.")
+        _P("[-] No alchemy station found.")
 
         return false
     end
@@ -90,7 +82,7 @@ local function SetAlchemyCraftingStationHooks()
     local alchemyStation = Addon.stations.alchemy
 
     if not (alchemyStation.creationButton and alchemyStation.recipeButton) then
-        _PrintFA("[-] Not appropriate alchemy station.")
+        _P("[-] Not appropriate alchemy station.")
 
         return false
     end
@@ -106,7 +98,7 @@ local function SetAlchemyCraftingStationHooks()
     local reagentsListControl = list.dataTypes[2]
 
     if not (solventsListControl.setupCallback and reagentsListControl.setupCallback) then
-        _PrintFA("[-] Could not find original setup functions")
+        _P("[-] Could not find original setup functions")
 
         return false
     end
@@ -148,7 +140,7 @@ end
 
 local function SetEnchantingCraftingStationHooks()
     if not Addon.stations.enchanting then
-        _PrintFA("[-] No enchanting station found.")
+        _P("[-] No enchanting station found.")
 
         return false
     end
@@ -160,7 +152,7 @@ local function SetEnchantingCraftingStationHooks()
     local enchantingStation = Addon.stations.enchanting
 
     if not (enchantingStation.creationButton and enchantingStation.recipeButton) then
-        _PrintFA("[-] Not appropriate enchanting station.")
+        _P("[-] Not appropriate enchanting station.")
 
         return false
     end
@@ -175,7 +167,7 @@ local function SetEnchantingCraftingStationHooks()
     local itemsListControl = list.dataTypes[1]
 
     if not (itemsListControl.setupCallback) then
-        _PrintFA("[-] Could not find original setup functions")
+        _P("[-] Could not find original setup functions")
 
         return false
     end
