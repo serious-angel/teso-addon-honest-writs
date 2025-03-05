@@ -95,7 +95,7 @@ _Main()
 
     declare rCode=0;
 
-    if 7z a -r -t7z -m0=deflate -bb0 -bso0 '-x!.git*' -- "$archiveFilepath" -- "${files[@]}"; (( rCode=$? ));
+    if 7z a -r -tzip -m0=deflate -bb0 -bso0 '-x!.git*' -- "$archiveFilepath" -- "${files[@]}"; (( rCode=$? ));
     then
         popd > /dev/null || return $?;
 
@@ -114,7 +114,7 @@ _Main()
     readarray -t -- archiveFiles < <(
         set -o pipefail;
 
-        7z l -t7z -slt -- "$archiveFilepath" | perl -ne 'print "$1\n" if /^Path = (.+)/';
+        7z l -tzip -slt -- "$archiveFilepath" | perl -ne 'print "$1\n" if /^Path = (.+)/';
     ) \
         || return $?;
 
@@ -132,7 +132,7 @@ _Main()
 
     for filepath in "${archiveFiles[@]}";
     do
-        if 7z rn -t7z -m0=deflate -bb0 -bso0 -- "$archiveFilepath" "$filepath" "${addonName}/${filepath}"; (( rCode=$? ));
+        if 7z rn -tzip -m0=deflate -bb0 -bso0 -- "$archiveFilepath" "$filepath" "${addonName}/${filepath}"; (( rCode=$? ));
         then
             return "$rCode";
         fi
@@ -144,7 +144,7 @@ _Main()
     printf -- $' [+] Created archive for addon \'%s\' (v%s).\n' "$addonName" "$version";
     printf -- $' [ ] Filepath: \'%s\'.\n' "$archiveFilepath";
 
-    7z l -- "$archiveFilepath";
+    7z l -tzip -- "$archiveFilepath";
 }
 
 _Main "$@";
