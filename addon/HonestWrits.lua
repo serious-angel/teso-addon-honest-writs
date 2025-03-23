@@ -2,92 +2,96 @@
 ----------------------------------------------------------------
 
 local Addon = {
-    name = "HonestWrits",
-    title = "Honest Writs",
-    init = false,
+    name    = 'HonestWrits',
+    title   = 'Honest Writs',
+    version = '0.9.0',
     options = {},
 
     meta = {
-        svVersion = "1"
+        init      = false,
+        svVersion = '1'
+    },
+
+    data = {
+        stations = {},
     }
 }
 
 local defaultOptions = {
-    ["STATIONS"] = {
-        ["ALCHEMY"] = true,
-        ["ENCHANTING"] = true
+    ['STATIONS'] = {
+        ['ALCHEMY']    = false,
+        ['ENCHANTING'] = false
     }
 }
-
-Addon.stations = {}
 
 -- Functions (General)
 ----------------------------------------------------------------
 
 local function _P(msg)
-    CHAT_SYSTEM:AddMessage(string.format("|c333333[Honest Writs] |c888888" .. Addon.title .. "|c333333:|r %s", msg))
+    CHAT_SYSTEM:AddMessage(string.format('[|cFF2222D|r] [|cFFD966' .. Addon.title .. '|r] %s', tostring(msg)))
 end
 
 -- Functions
 ----------------------------------------------------------------
 
-local function InitializeOptions(...)
-    LibAddonMenu2:RegisterAddonPanel(Addon.name .. "_Config", {
-        type = "panel",
-        name = Addon.name,
-        displayName = "|cFFFFFF" .. Addon.title .. "|r",
-        registerForRefresh = true,
-        registerForDefaults = true
+local function _InitializeOptions(...)
+    LibAddonMenu2:RegisterAddonPanel(Addon.name .. '_Config', {
+        type                = 'panel',
+        name                = Addon.name,
+        displayName         = '|cFFD966' .. Addon.title .. '|r',
+        author              = '|cFFFFFFSerious Angel|r',
+        version             = Addon.version,
+        registerForRefresh  = true,
+        registerForDefaults = true,
+        website             = 'https://esoui.com/downloads/fileinfo.php?id=4011',
     })
 
-    Addon.options = ZO_SavedVars:NewAccountWide(Addon.name .. "SavedVars", Addon.meta.svVersion, GetWorldName(), defaultOptions)
+    Addon.options = ZO_SavedVars:NewAccountWide(Addon.name .. 'SavedVars', Addon.meta.svVersion, GetWorldName(), defaultOptions)
 
     local optionsData={
         {
-            type = "header",
-            name = "Writs at Crafting Stations",
+            type = 'header',
+            name = 'Reveal Writ Quest Pins T',
         },
         {
-            type = "checkbox",
-            name = "Alchemy",
-            tooltip = "Hide quest pins for ingredients.",
-            default = true,
-            getFunc = function() return Addon.options["STATIONS"]["ALCHEMY"] end,
-            setFunc = function(value) Addon.options["STATIONS"]["ALCHEMY"] = value end,
+            type    = 'checkbox',
+            name    = 'Alchemy (Ingredients)',
+            default = defaultOptions['STATIONS']['ALCHEMY'],
+            getFunc = function() return Addon.options['STATIONS']['ALCHEMY'] end,
+            setFunc = function(value) Addon.options['STATIONS']['ALCHEMY'] = value end,
         },
         {
-            type = "checkbox",
-            name = "Enchanting",
-            tooltip = "Hide quest pins for runes.",
-            default = true,
-            getFunc = function() return Addon.options["STATIONS"]["ENCHANTING"] end,
-            setFunc = function(value) Addon.options["STATIONS"]["ENCHANTING"] = value end,
+            type    = 'checkbox',
+            name    = 'Enchanting (Runes)',
+            default = defaultOptions['STATIONS']['ENCHANTING'],
+            getFunc = function() return Addon.options['STATIONS']['ENCHANTING'] end,
+            setFunc = function(value) Addon.options['STATIONS']['ENCHANTING'] = value end,
         },
     }
 
-    LibAddonMenu2:RegisterOptionControls(Addon.name .. "_Config", optionsData)
+    LibAddonMenu2:RegisterOptionControls(Addon.name .. '_Config', optionsData)
 end
 
-local function SetAlchemyCraftingStationHooks()
-    if not Addon.stations.alchemy then
-        _P("[-] No alchemy station found.")
+local function _SetAlchemyCraftingStationHooks()
+    if not Addon.data.stations.alchemy then
+        _P('[-] No alchemy station found.')
 
         return false
     end
 
-    if Addon.stations.alchemy._honestWrits then
+    if Addon.data.stations.alchemy._honestWrits then
         return true
     end
 
-    local alchemyStation = Addon.stations.alchemy
+    local alchemyStation = Addon.data.stations.alchemy
 
     if not (alchemyStation.creationButton and alchemyStation.recipeButton) then
-        _P("[-] Not appropriate alchemy station.")
+        _P('[-] Not appropriate alchemy station.')
 
         return false
     end
 
-    local list = Addon.stations.alchemy.inventory.list
+    local list = Addon.data.stations.alchemy.inventory.list
     local listContents = list:GetChild(1)
 
     if not listContents then
@@ -98,19 +102,21 @@ local function SetAlchemyCraftingStationHooks()
     local reagentsListControl = list.dataTypes[2]
 
     if not (solventsListControl.setupCallback and reagentsListControl.setupCallback) then
-        _P("[-] Could not find original setup functions")
+        _P('[-] Could not find original setup function(s) for alchemy')
 
         return false
     end
 
-    local enabledStations = Addon.options["STATIONS"]
+    local enabledStations = Addon.options['STATIONS']
 
-    SecurePostHook(solventsListControl, "setupCallback", function(rowControl, data)
-        if not enabledStations["ALCHEMY"] then
+    -- If enabled, hide quest pins for solvents.
+
+    SecurePostHook(solventsListControl, 'setupCallback', function(rowControl, data)
+        if enabledStations['ALCHEMY'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild("QuestPin")
+        local questPin = rowControl:GetNamedChild('QuestPin')
 
         if not questPin then
             return
@@ -119,12 +125,14 @@ local function SetAlchemyCraftingStationHooks()
         questPin:SetHidden(true)
     end)
 
-    SecurePostHook(reagentsListControl, "setupCallback", function(rowControl, data)
-        if not enabledStations["ALCHEMY"] then
+    -- If enabled, hide quest pins for regents.
+
+    SecurePostHook(reagentsListControl, 'setupCallback', function(rowControl, data)
+        if enabledStations['ALCHEMY'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild("QuestPin")
+        local questPin = rowControl:GetNamedChild('QuestPin')
 
         if not questPin then
             return
@@ -138,21 +146,21 @@ local function SetAlchemyCraftingStationHooks()
     return true
 end
 
-local function SetEnchantingCraftingStationHooks()
-    if not Addon.stations.enchanting then
-        _P("[-] No enchanting station found.")
+local function _SetEnchantingCraftingStationHooks()
+    if not Addon.data.stations.enchanting then
+        _P('[-] No enchanting station found.')
 
         return false
     end
 
-    if Addon.stations.enchanting._honestWrits then
+    if Addon.data.stations.enchanting._honestWrits then
         return true
     end
 
-    local enchantingStation = Addon.stations.enchanting
+    local enchantingStation = Addon.data.stations.enchanting
 
     if not (enchantingStation.creationButton and enchantingStation.recipeButton) then
-        _P("[-] Not appropriate enchanting station.")
+        _P('[-] Not appropriate enchanting station.')
 
         return false
     end
@@ -164,22 +172,24 @@ local function SetEnchantingCraftingStationHooks()
         return false
     end
 
-    local itemsListControl = list.dataTypes[1]
+    local runesListControl = list.dataTypes[1]
 
-    if not (itemsListControl.setupCallback) then
-        _P("[-] Could not find original setup functions")
+    if not runesListControl.setupCallback then
+        _P('[-] Could not find original setup function for enchanting')
 
         return false
     end
 
-    local enabledStations = Addon.options["STATIONS"]
+    local enabledStations = Addon.options['STATIONS']
 
-    SecurePostHook(itemsListControl, "setupCallback", function(rowControl, data)
-        if not enabledStations["ENCHANTING"] then
+    -- If enabled, hide quest pins for runes.
+
+    SecurePostHook(runesListControl, 'setupCallback', function(rowControl, data)
+        if enabledStations['ENCHANTING'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild("QuestPin")
+        local questPin = rowControl:GetNamedChild('QuestPin')
 
         if not questPin then
             return
@@ -193,51 +203,46 @@ local function SetEnchantingCraftingStationHooks()
     return true
 end
 
-local function SetHooks()
-    EVENT_MANAGER:RegisterForEvent(Addon.name .. "_OnCraftingStationInteract", EVENT_CRAFTING_STATION_INTERACT, function(eventCode, craftingType, isCraftingSameAsPrevious)
-        if craftingType == CRAFTING_TYPE_ALCHEMY then
-            if not Addon.stations.alchemy or Addon.stations.alchemy._honestWrits ~= 1 then
-                Addon.stations.alchemy = ALCHEMY
+local function _SetHooks()
+    if Addon.meta.init then
+        return
+    end
 
-                SetAlchemyCraftingStationHooks()
+    EVENT_MANAGER:RegisterForEvent(Addon.name .. '_OnCraftingStationInteract', EVENT_CRAFTING_STATION_INTERACT, function(eventCode, craftingType, isCraftingSameAsPrevious)
+        if craftingType == CRAFTING_TYPE_ALCHEMY then
+            if not Addon.data.stations.alchemy or Addon.data.stations.alchemy._honestWrits ~= 1 then
+                Addon.data.stations.alchemy = ALCHEMY
+
+                _SetAlchemyCraftingStationHooks()
             end
 
             return
         end
 
         if craftingType == CRAFTING_TYPE_ENCHANTING then
-            if not Addon.stations.enchanting or Addon.stations.enchanting._honestWrits ~= 1 then
-                Addon.stations.enchanting = ENCHANTING
+            if not Addon.data.stations.enchanting or Addon.data.stations.enchanting._honestWrits ~= 1 then
+                Addon.data.stations.enchanting = ENCHANTING
 
-                SetEnchantingCraftingStationHooks()
+                _SetEnchantingCraftingStationHooks()
             end
 
             return
         end
-
-        -- EVENT_MANAGER:UnregisterForEvent(Addon.name .. "_OnCraftingStationInteract", EVENT_CRAFTING_STATION_INTERACT)
     end)
 end
 
 -- Main
 ----------------------------------------------------------------
 
-EVENT_MANAGER:RegisterForEvent(Addon.name .. "_OnAddonLoaded", EVENT_ADD_ON_LOADED, function(event, addonName)
-    if (addonName ~= Addon.name)
-    then
+EVENT_MANAGER:RegisterForEvent(Addon.name .. '_OnAddonLoaded', EVENT_ADD_ON_LOADED, function(event, addonName)
+    if addonName ~= Addon.name or Addon.meta.init then
         return
     end
 
-    InitializeOptions()
+    _InitializeOptions()
+    _SetHooks()
 
-    local enabledStations = Addon.options["STATIONS"]
+    Addon.meta.init = true
 
-    -- If enabled for any station
-    if enabledStations["ALCHEMY"] or enabledStations["ENCHANTING"] then
-        SetHooks()
-    end
-
-    Addon.init = true
-
-    EVENT_MANAGER:UnregisterForEvent(Addon.name .. "_OnAddonLoaded", EVENT_ADD_ON_LOADED)
+    EVENT_MANAGER:UnregisterForEvent(Addon.name .. '_OnAddonLoaded', EVENT_ADD_ON_LOADED)
 end)
