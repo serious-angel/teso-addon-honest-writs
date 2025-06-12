@@ -22,7 +22,7 @@ jobs:
       - id: verify-source
         name: 'Verify source'
         run: |
-          if ! addonVersion="$( perl -ne 'print /^## Version:\s+([0-9]+)\s*$/' -- "$ADDON_MANIFEST_FILEPATH"; )";
+          if ! buildVersion="$( perl -ne 'if (/^## Version:\s+v?([0-9]+(?:\.[0-9]+)*)\s*$/) { print $1; } else { exit(1); };' -- "$ADDON_MANIFEST_FILEPATH"; )";
           then
               printf -- $'Failed to find the addon version in manifest: \'%s\'.\n' "$ADDON_MANIFEST_FILEPATH";
 
@@ -31,10 +31,10 @@ jobs:
 
           tagName="${{ github.ref_name }}";
 
-          if [[ "v${addonVersion}" != "$tagName" ]];
+          if [[ "v${buildVersion}" != "$tagName" ]];
           then
             printf $'Addon source version \'%s\' mismatches the release tag: \'%s\'.\n' \
-              "$addonVersion" "$tagName";
+              "$buildVersion" "$tagName";
 
             exit 1;
           fi
@@ -56,13 +56,13 @@ jobs:
         run: |
           addonFilepath="${{ steps.build.outputs.build_filepath }}";
           addonFilename="$( basename -- "$addonFilepath" '.zip'; )";
-          addonVersion="v${addonFilename##*v}";
+          buildVersion="v${addonFilename##*v}";
           tagName="${{ github.ref_name }}";
 
-          if [[ "$addonVersion" != "$tagName" ]];
+          if [[ "$buildVersion" != "$tagName" ]];
           then
             printf $'Addon build version \'%s\' mismatches the release tag: \'%s\'.\n' \
-              "$addonVersion" "$tagName";
+              "$buildVersion" "$tagName";
 
             exit 1;
           fi
