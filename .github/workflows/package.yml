@@ -30,12 +30,11 @@ jobs:
           fi
 
           tagName="${{ github.ref_name }}";
-          tagNameNormalized="${tagName//\.}";
 
-          if [[ "v${addonVersion}" != "$tagNameNormalized" ]];
+          if [[ "v${addonVersion}" != "$tagName" ]];
           then
-            printf $'Addon source version \'%s\' mismatches the release tag: \'%s\' (%s).\n' \
-              "$addonVersion" "$tagName" "$tagNameNormalized";
+            printf $'Addon source version \'%s\' mismatches the release tag: \'%s\'.\n' \
+              "$addonVersion" "$tagName";
 
             exit 1;
           fi
@@ -59,12 +58,11 @@ jobs:
           addonFilename="$( basename -- "$addonFilepath" '.zip'; )";
           addonVersion="v${addonFilename##*v}";
           tagName="${{ github.ref_name }}";
-          tagNameNormalized="${tagName//\.}";
 
-          if [[ "$addonVersion" != "$tagNameNormalized" ]];
+          if [[ "$addonVersion" != "$tagName" ]];
           then
-            printf $'Addon build version \'%s\' mismatches the release tag: \'%s\' (%s).\n' \
-              "$addonVersion" "$tagName" "$tagNameNormalized";
+            printf $'Addon build version \'%s\' mismatches the release tag: \'%s\'.\n' \
+              "$addonVersion" "$tagName";
 
             exit 1;
           fi
