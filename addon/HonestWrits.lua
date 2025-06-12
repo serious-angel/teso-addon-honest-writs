@@ -4,7 +4,7 @@
 local Addon = {
     name    = 'HonestWrits',
     title   = 'Honest Writs',
-    version = '0.9.0',
+    version = '1.0.0',
     options = {},
 
     meta = {
