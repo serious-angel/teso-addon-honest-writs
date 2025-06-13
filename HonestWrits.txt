@@ -1,9 +1,14 @@
-## DependsOn: LibAddonMenu-2.0>=37
-## APIVersion: 101045
-## SavedVariables: HonestWritsSavedVars
 ## Title: |cFFD966Honest Writs|r
-## Author: |cFFFFFFSerious Angel|r
-## Version: 09
 ## Description: Let it be more honest towards the mighty crafter!
+## Author: |cFFFFFFSerious Angel|r
+## APIVersion: 101046 101047
+## AddOnVersion: 100000
+## Version: 1.0.0
+## DependsOn: LibAddonMenu-2.0>=37
+## SavedVariables: HonestWritsSavedVars
 
 addon/HonestWrits.lua
+
+# This Add-on is not created by, affiliated with, or sponsored by, ZeniMax Media Inc. or its affiliates.
+# The Elder Scrolls® and related logos are registered trademarks or trademarks of ZeniMax Media Inc. in the United States
+# and/or other countries. All rights reserved.
