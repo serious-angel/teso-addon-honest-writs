@@ -54,22 +54,19 @@ _Main()
 
     declare version;
 
-    if ! version="$( perl -ne $'BEGIN { $m=0; } (/^## Version:\s+v?([0-9]+(?:\.[0-9]+)*)\s*$/) && ++$m && print $1; END { exit 1 unless $m == 1; }' -- "$manifestFilepath"; )";
+    if ! version="$( perl -ne 'BEGIN { $m=0; } (/^## Version:\s+([0-9]+(?:\.[0-9]+)*)\s*$/) && ++$m && print $1; END { exit 1 unless $m == 1; }' -- "$manifestFilepath"; )";
     then
         printf -- $'\n [-] Failed to find the version in manifest: \'%s\'.\n\n' "$manifestFilepath";
 
         return 1;
     fi
 
-    declare -p version;
-    set -x;
-
     # Archive
     # --------------------------------
     # Find addon files
     # ----------------
 
-    if ! readarray -td $'\n' -- files < <( perl -ne 'print if /^[^#\s]+/../EOF/' -- "$manifestFilepath"; ) || (( ! ${#files[@]} ));
+    if ! readarray -td $'\n' -- files < <( perl -ne 'BEGIN { $m=0; } (!/^\s*(?:#+|$)/) && ++$m && print; END{exit 1 unless $m > 0}' -- "$manifestFilepath"; ) || (( ! ${#files[@]} ));
     then
         printf -- $'\n [-] Failed to determine package files of manifest: \'%s\'.\n\n' "$manifestFilepath";
 
@@ -86,7 +83,7 @@ _Main()
 
     pushd -- "$manifestDirpath" > /dev/null || return $?;
 
-    declare archiveFilename="${addonName}_${version}.zip";
+    declare archiveFilename="${addonName}_v${version}.zip";
     declare archiveFilepath; archiveFilepath="${archiveDirpath}/${archiveFilename}";
 
     if [[ -f "$archiveFilepath" ]];
