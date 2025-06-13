@@ -61,6 +61,9 @@ _Main()
         return 1;
     fi
 
+    declare -p version;
+    set -x;
+
     # Archive
     # --------------------------------
     # Find addon files
@@ -83,7 +86,7 @@ _Main()
 
     pushd -- "$manifestDirpath" > /dev/null || return $?;
 
-    declare archiveFilename="${addonName}_v${version}.zip";
+    declare archiveFilename="${addonName}_${version}.zip";
     declare archiveFilepath; archiveFilepath="${archiveDirpath}/${archiveFilename}";
 
     if [[ -f "$archiveFilepath" ]];
@@ -141,7 +144,7 @@ _Main()
     # Done
     # ----------------
 
-    printf -- $' [+] Created archive for addon \'%s\' (v%s).\n' "$addonName" "$version";
+    printf -- $' [+] Created archive for addon \'%s\' (%s).\n' "$addonName" "$version";
     printf -- $' [ ] Filepath: \'%s\'.\n' "$archiveFilepath";
 
     7z l -tzip -- "$archiveFilepath";
