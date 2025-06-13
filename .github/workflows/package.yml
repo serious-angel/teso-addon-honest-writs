@@ -22,10 +22,6 @@ jobs:
       - id: verify-source
         name: 'Verify source'
         run: |
-          declare -p ADDON_MANIFEST_FILEPATH;
-          cat -- "$ADDON_MANIFEST_FILEPATH";
-          set -x;
-
           if ! buildVersion="$( perl -ne $'BEGIN { $m=0; } (/^## Version:\s+v?([0-9]+(?:\.[0-9]+)*)\s*$/) && ++$m && print $1; END { exit 1 unless $m == 1; }' -- "$ADDON_MANIFEST_FILEPATH"; )";
           then
               printf -- $'Failed to find the addon version in manifest: \'%s\'.\n' "$ADDON_MANIFEST_FILEPATH";
