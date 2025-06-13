@@ -54,7 +54,7 @@ _Main()
 
     declare version;
 
-    if ! version="$( perl -ne 'if (/^## Version:\s+v?([0-9]+(?:\.[0-9]+)*)\s*$/) { print $1; } else { exit(1); };' -- "$manifestFilepath"; )";
+    if ! version="$( perl -ne $'BEGIN { $m=0; } (/^## Version:\s+v?([0-9]+(?:\.[0-9]+)*)\s*$/) && ++$m && print $1; END { exit 1 unless $m == 1; }' -- "$manifestFilepath"; )";
     then
         printf -- $'\n [-] Failed to find the version in manifest: \'%s\'.\n\n' "$manifestFilepath";
 
