@@ -4,7 +4,7 @@
 local Addon = {
     name    = 'HonestWrits',
     title   = 'Honest Writs',
-    version = '1.0.0',
+    version = '1.1.0',
     options = {},
 
     meta = {
@@ -72,6 +72,37 @@ local function _InitializeOptions(...)
     LibAddonMenu2:RegisterOptionControls(Addon.name .. '_Config', optionsData)
 end
 
+local function _HandleQuestPin(station, rowControl, data)
+    -- Try all common quest pin references
+    local questPin =
+        rowControl.questPin or
+        rowControl.questIcon or
+        rowControl:GetNamedChild("QuestPin")
+
+    -- If no quest pin found
+    if not questPin then
+        return
+    end
+
+    local initialVisibility = questPin:IsHidden() == false
+
+    -- If already hidden
+    if not initialVisibility then
+        return
+    end
+
+    -- _P('[+] Found a visible Quest pin.')
+
+    questPin:SetHidden(true)
+
+    local visibility = questPin:IsHidden() == false
+
+    -- If still is shown
+    if visibility == initialVisibility then
+        _P("[-] Sorry. Failed to hide a Quest pin: " .. tostring(questPin:GetName()))
+    end
+end
+
 local function _SetAlchemyCraftingStationHooks()
     if not Addon.data.stations.alchemy then
         _P('[-] No alchemy station found.')
@@ -79,6 +110,7 @@ local function _SetAlchemyCraftingStationHooks()
         return false
     end
 
+    -- If already set
     if Addon.data.stations.alchemy._honestWrits then
         return true
     end
@@ -92,6 +124,11 @@ local function _SetAlchemyCraftingStationHooks()
     end
 
     local list = Addon.data.stations.alchemy.inventory.list
+
+    if not list then
+        return false
+    end
+
     local listContents = list:GetChild(1)
 
     if not listContents then
@@ -102,43 +139,31 @@ local function _SetAlchemyCraftingStationHooks()
     local reagentsListControl = list.dataTypes[2]
 
     if not (solventsListControl.setupCallback and reagentsListControl.setupCallback) then
-        _P('[-] Could not find original setup function(s) for alchemy')
+        _P('[-] Could not find original setup function(s) for alchemy.')
 
         return false
     end
 
     local enabledStations = Addon.options['STATIONS']
 
-    -- If enabled, hide quest pins for solvents.
+    -- Set the hook to hide quest pins for Alchemy Solvents.
 
     SecurePostHook(solventsListControl, 'setupCallback', function(rowControl, data)
         if enabledStations['ALCHEMY'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild('QuestPin')
-
-        if not questPin then
-            return
-        end
-
-        questPin:SetHidden(true)
+        _HandleQuestPin('alchemy_solvents', rowControl, data)
     end)
 
-    -- If enabled, hide quest pins for regents.
+    -- Set the hook to hide quest pins for Alchemy Reagents.
 
     SecurePostHook(reagentsListControl, 'setupCallback', function(rowControl, data)
         if enabledStations['ALCHEMY'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild('QuestPin')
-
-        if not questPin then
-            return
-        end
-
-        questPin:SetHidden(true)
+        _HandleQuestPin('alchemy_reagents', rowControl, data)
     end)
 
     alchemyStation._honestWrits = true
@@ -166,6 +191,11 @@ local function _SetEnchantingCraftingStationHooks()
     end
 
     local list = enchantingStation.inventory.list
+
+    if not list then
+        return false
+    end
+
     local listContents = list:GetChild(1)
 
     if not listContents then
@@ -174,28 +204,22 @@ local function _SetEnchantingCraftingStationHooks()
 
     local runesListControl = list.dataTypes[1]
 
-    if not runesListControl.setupCallback then
-        _P('[-] Could not find original setup function for enchanting')
+    if not runesListControl then
+        _P('[-] Could not find original setup function for enchanting.')
 
         return false
     end
 
     local enabledStations = Addon.options['STATIONS']
 
-    -- If enabled, hide quest pins for runes.
+    -- Set the hook to hide quest pins for Enchanting Runes.
 
-    SecurePostHook(runesListControl, 'setupCallback', function(rowControl, data)
+    SecurePostHook(runesListControl, "setupCallback", function(rowControl, data)
         if enabledStations['ENCHANTING'] then
             return false
         end
 
-        local questPin = rowControl:GetNamedChild('QuestPin')
-
-        if not questPin then
-            return
-        end
-
-        questPin:SetHidden(true)
+        _HandleQuestPin('enchanting_runes', rowControl, data)
     end)
 
     enchantingStation._honestWrits = true
@@ -210,7 +234,8 @@ local function _SetHooks()
 
     EVENT_MANAGER:RegisterForEvent(Addon.name .. '_OnCraftingStationInteract', EVENT_CRAFTING_STATION_INTERACT, function(eventCode, craftingType, isCraftingSameAsPrevious)
         if craftingType == CRAFTING_TYPE_ALCHEMY then
-            if not Addon.data.stations.alchemy or Addon.data.stations.alchemy._honestWrits ~= 1 then
+            -- If not yet set
+            if not Addon.data.stations.alchemy or not Addon.data.stations.alchemy._honestWrits then
                 Addon.data.stations.alchemy = ALCHEMY
 
                 _SetAlchemyCraftingStationHooks()
@@ -220,7 +245,8 @@ local function _SetHooks()
         end
 
         if craftingType == CRAFTING_TYPE_ENCHANTING then
-            if not Addon.data.stations.enchanting or Addon.data.stations.enchanting._honestWrits ~= 1 then
+            -- If not yet set
+            if not Addon.data.stations.enchanting or not Addon.data.stations.enchanting._honestWrits then
                 Addon.data.stations.enchanting = ENCHANTING
 
                 _SetEnchantingCraftingStationHooks()
