@@ -4,7 +4,7 @@
 local Addon = {
     name    = 'HonestWrits',
     title   = 'Honest Writs',
-    version = '1.1.0',
+    version = '1.2.0',
     options = {},
 
     meta = {
@@ -20,7 +20,13 @@ local Addon = {
 local defaultOptions = {
     ['STATIONS'] = {
         ['ALCHEMY']    = false,
-        ['ENCHANTING'] = false
+        ['ENCHANTING'] = false,
+        ['SMITHING']= false,
+
+        -- todo: Add support for separate smithing stations
+        -- ['BLACKSMITHING']= false,
+        -- ['CLOTHING']     = false,
+        -- ['WOODWORKING']  = false
     }
 }
 
@@ -67,6 +73,36 @@ local function _InitializeOptions(...)
             getFunc = function() return Addon.options['STATIONS']['ENCHANTING'] end,
             setFunc = function(value) Addon.options['STATIONS']['ENCHANTING'] = value end,
         },
+        {
+            type    = 'checkbox',
+            name    = 'Smithing',
+            default = defaultOptions['STATIONS']['SMITHING'],
+            getFunc = function() return Addon.options['STATIONS']['SMITHING'] end,
+            setFunc = function(value) Addon.options['STATIONS']['SMITHING'] = value end,
+        },
+
+        -- todo: Add support for separate smithing stations
+        -- {
+        --     type    = 'checkbox',
+        --     name    = 'Blacksmithing',
+        --     default = defaultOptions['STATIONS']['BLACKSMITHING'],
+        --     getFunc = function() return Addon.options['STATIONS']['BLACKSMITHING'] end,
+        --     setFunc = function(value) Addon.options['STATIONS']['BLACKSMITHING'] = value end,
+        -- },
+        -- {
+        --     type    = 'checkbox',
+        --     name    = 'Clothing',
+        --     default = defaultOptions['STATIONS']['CLOTHING'],
+        --     getFunc = function() return Addon.options['STATIONS']['CLOTHING'] end,
+        --     setFunc = function(value) Addon.options['STATIONS']['CLOTHING'] = value end,
+        -- },
+        -- {
+        --     type    = 'checkbox',
+        --     name    = 'Woodworking',
+        --     default = defaultOptions['STATIONS']['WOODWORKING'],
+        --     getFunc = function() return Addon.options['STATIONS']['WOODWORKING'] end,
+        --     setFunc = function(value) Addon.options['STATIONS']['WOODWORKING'] = value end,
+        -- },
     }
 
     LibAddonMenu2:RegisterOptionControls(Addon.name .. '_Config', optionsData)
@@ -97,15 +133,20 @@ local function _HandleQuestPin(station, rowControl, data)
 
     local visibility = questPin:IsHidden() == false
 
-    -- If still is shown
+    -- If still is visible
     if visibility == initialVisibility then
         _P("[-] Sorry. Failed to hide a Quest pin: " .. tostring(questPin:GetName()))
+        _P("[-] Control: " .. tostring(rowControl:GetName()))
+
+        return
     end
+
+    -- _P('[+] Hid Quest pin in: ' .. tostring(station))
 end
 
 local function _SetAlchemyCraftingStationHooks()
     if not Addon.data.stations.alchemy then
-        _P('[-] No alchemy station found.')
+        _P('[-] No Alchemy station found.')
 
         return false
     end
@@ -118,7 +159,7 @@ local function _SetAlchemyCraftingStationHooks()
     local alchemyStation = Addon.data.stations.alchemy
 
     if not (alchemyStation.creationButton and alchemyStation.recipeButton) then
-        _P('[-] Not appropriate alchemy station.')
+        _P('[-] Not appropriate Alchemy station.')
 
         return false
     end
@@ -139,7 +180,7 @@ local function _SetAlchemyCraftingStationHooks()
     local reagentsListControl = list.dataTypes[2]
 
     if not (solventsListControl.setupCallback and reagentsListControl.setupCallback) then
-        _P('[-] Could not find original setup function(s) for alchemy.')
+        _P('[-] Could not find original setup function(s) for Alchemy station.')
 
         return false
     end
@@ -173,7 +214,7 @@ end
 
 local function _SetEnchantingCraftingStationHooks()
     if not Addon.data.stations.enchanting then
-        _P('[-] No enchanting station found.')
+        _P('[-] No Enchanting station found.')
 
         return false
     end
@@ -185,7 +226,7 @@ local function _SetEnchantingCraftingStationHooks()
     local enchantingStation = Addon.data.stations.enchanting
 
     if not (enchantingStation.creationButton and enchantingStation.recipeButton) then
-        _P('[-] Not appropriate enchanting station.')
+        _P('[-] Not appropriate Enchanting station.')
 
         return false
     end
@@ -205,7 +246,7 @@ local function _SetEnchantingCraftingStationHooks()
     local runesListControl = list.dataTypes[1]
 
     if not runesListControl then
-        _P('[-] Could not find original setup function for enchanting.')
+        _P('[-] Could not find original setup function for Enchanting station.')
 
         return false
     end
@@ -223,6 +264,102 @@ local function _SetEnchantingCraftingStationHooks()
     end)
 
     enchantingStation._honestWrits = true
+
+    return true
+end
+
+local function _SetSmithingCraftingStationHooks(craftingType)
+    if not Addon.data.stations.smithing then
+        _P('[-] No smithing station found.')
+
+        return false
+    end
+
+    -- If already set hooks
+    if Addon.data.stations.smithing._honestWrits then
+        return true
+    end
+
+    local smithingStation = Addon.data.stations.smithing
+
+    if not (smithingStation.creationButton and smithingStation.recipeButton) then
+        _P('[-] Not appropriate Smithing station.')
+
+        return false
+    end
+
+    local stationObject = smithingStation
+    local enabledStations = Addon.options['STATIONS']
+    local creationPanel = stationObject.creationPanel
+
+    if not creationPanel then
+        return false
+    end
+
+    -- Handle Types (e.g. Weapons, Apparel etc.)
+    local function _HandleTypeTabs(tabsControl)
+        -- If we should not hide the Quest pins for the now "enabled" station
+        if enabledStations['SMITHING'] then
+            return false
+        end
+
+        local tabs = tabsControl:GetNumChildren()
+
+        -- Each tab (e.g. 2=Weapons, 4=Apparel etc.)
+        for i = 1, tabs do
+            local tabControl = tabsControl:GetChild(i)
+
+            if tabControl then
+                local name = tabControl:GetName()
+
+                _HandleQuestPin('smithing_creation_tab', tabControl, nil)
+            end
+        end
+    end
+
+    -- Handle Panel List (e.g. Patterns, Materials etc.)
+    local function _HandlePanelList(list)
+        if list.setupFunction then
+            -- If we should not hide the Quest pins for the now "enabled" station
+            if enabledStations['SMITHING'] then
+                return false
+            end
+
+            -- Set the main hook (triggers on each scrolling event)
+            SecurePostHook(list, 'setupFunction', function(control, data)
+                if enabledStations['SMITHING'] then
+                    return false
+                end
+
+                -- Type tabs may reset (e.g. on type change), so handle them again.
+                _HandleTypeTabs(creationPanel.tabs)
+
+                _HandleQuestPin('smithing_creation', control, data)
+            end)
+
+            -- Process existing items, if possible (e.g. the first viewable list, prior scrolling)
+            if list.controls then
+                for _, control in pairs(list.controls) do
+                    if control then
+                        _HandleQuestPin('smithing_creation_initial', control, nil)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Hide already existing type tabs (e.g. Weapons, Apparel etc.)
+    _HandleTypeTabs(creationPanel.tabs)
+
+    -- Handle Pattern list (e.g. Cuirass, Sabatons, Gauntlets, Helm, Greeves, Pauldron, Girdle etc.)
+    _HandlePanelList(creationPanel.patternList)
+
+    -- Handle Material list (e.g. Iron Ingot, Steel Ingot, Orichalcum Ingot, Dwraven Ingnot, Ebony Ingot etc.)
+    _HandlePanelList(creationPanel.materialList)
+
+    -- Set hooks and initials for Smithing station
+
+    smithingStation._honestWrits = true
 
     return true
 end
@@ -250,6 +387,28 @@ local function _SetHooks()
                 Addon.data.stations.enchanting = ENCHANTING
 
                 _SetEnchantingCraftingStationHooks()
+            end
+
+            return
+        end
+
+        -- todo: Currently, this works for any "smithing" station, yet we need to separate them.
+        if craftingType == CRAFTING_TYPE_BLACKSMITHING or craftingType == CRAFTING_TYPE_WOODWORKING or craftingType == CRAFTING_TYPE_CLOTHIER then
+            -- If not yet set
+            if not Addon.data.stations.smithing or not Addon.data.stations.smithing._honestWrits then
+                -- On each mode change (1=Refine, 2=Creation, 3=Deconstruct, 4=Improvement, 5=Research, and 6=Diagrams)
+                SecurePostHook(SMITHING, 'SetMode', function(_, mode)
+                    -- If not "Creation" mode
+                    if mode ~= 2 then
+                        return
+                    end
+
+                    Addon.data.stations.smithing = SMITHING
+
+                    -- _P('[ ] Setting hooks for Smithing station.')
+
+                    _SetSmithingCraftingStationHooks(craftingType)
+                end)
             end
 
             return
