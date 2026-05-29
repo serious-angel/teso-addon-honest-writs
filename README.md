@@ -1,8 +1,10 @@
 # Honest Writs
 
-The addon lets us hide writs quest pins of ingredients at crafting stations.
+The addon lets us optionally hide writs Quest pins at crafting stations, including:  
 
-> "Happiness is a choice that requires effort at times." - Aeschylus
+- Alchemy
+- Enchanting
+- Smithing (Blacksmithing, Woodworking, Clothing)
 
 # References
 
