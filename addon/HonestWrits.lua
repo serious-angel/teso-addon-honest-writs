@@ -4,7 +4,7 @@
 local Addon = {
     name    = 'HonestWrits',
     title   = 'Honest Writs',
-    version = '1.2.0',
+    version = '1.3.0',
     options = {},
 
     meta = {
@@ -21,12 +21,12 @@ local defaultOptions = {
     ['STATIONS'] = {
         ['ALCHEMY']    = false,
         ['ENCHANTING'] = false,
-        ['SMITHING']= false,
+        ['SMITHING']   = false,
 
         -- todo: Add support for separate smithing stations
-        -- ['BLACKSMITHING']= false,
-        -- ['CLOTHING']     = false,
-        -- ['WOODWORKING']  = false
+        -- ['BLACKSMITHING'] = false,
+        -- ['CLOTHING']      = false,
+        -- ['WOODWORKING']   = false
     }
 }
 
@@ -57,7 +57,7 @@ local function _InitializeOptions(...)
     local optionsData={
         {
             type = 'header',
-            name = 'Reveal Writ Quest Pins T',
+            name = 'Revealed Writ Quest Pins Stations',
         },
         {
             type    = 'checkbox',
@@ -108,40 +108,132 @@ local function _InitializeOptions(...)
     LibAddonMenu2:RegisterOptionControls(Addon.name .. '_Config', optionsData)
 end
 
-local function _HandleQuestPin(station, rowControl, data)
-    -- Try all common quest pin references
-    local questPin =
-        rowControl.questPin or
-        rowControl.questIcon or
-        rowControl:GetNamedChild("QuestPin")
+local function _FindQuestPin(control)
+    if not control then
+        return nil
+    end
 
-    -- If no quest pin found
+    -- Try all common Quest pin references.
+
+    local questPin = control.questPin
+
+    if questPin then
+        return questPin
+    end
+
+    local questPin = control:GetNamedChild("QuestPin")
+
+    if questPin then
+        return questPin
+    end
+
+    -- Try looping the control children with a possible Quest pin (e.g. Enchanting station).
+
+    local numChildren = control:GetNumChildren()
+
+    for i = 1, numChildren do
+        local questPin = _FindQuestPin(control:GetChild(i))
+
+        -- If found the Quest pin.
+        if questPin then
+            return questPin
+        end
+    end
+
+    -- No Quest pin was found.
+
+    return nil
+end
+
+local function _HideQuestPin(questPin, itemType, force)
+    -- If no Quest pin found
+    if not questPin then
+        return false
+    end
+
+    local initialVisibility = not questPin:IsHidden()
+
+    -- If Quest pin is visible, or force hide
+    if initialVisibility or force then
+        questPin:SetHidden(true)
+
+        -- If already was hid (forced)
+        if not initialVisibility then
+            return true
+        end
+
+        -- If the state did not change (still visible)
+        if not questPin:IsHidden() then
+            _P("[-] Sorry. Failed to hide a Quest pin: " .. tostring(questPin:GetName()))
+
+            return false
+        end
+
+        -- Visibility state changed (hid).
+
+        -- _P('[+] Hurray! Hid Quest pin in of type: ' .. tostring(itemType))
+
+        return true
+    end
+
+    return false
+end
+
+local function _HandleQuestPin(control, itemType)
+    -- Try finding the Quest pin.
+    local questPin = _FindQuestPin(control)
+
+    -- If no Quest pin found
     if not questPin then
         return
     end
 
-    local initialVisibility = questPin:IsHidden() == false
+    -- Found a Quest pin. Hurray!
 
-    -- If already hidden
-    if not initialVisibility then
+    -- Try hiding!
+    _HideQuestPin(questPin, itemType)
+
+    -- Try hide again, but on the next closest frames.
+    -- This should solve the case as the Enchanting station, where Quest pins appear still visible on the first attempt (as of 2026-05).
+    zo_callLater(function()
+        if not questPin then
+            return
+        end
+
+        _HideQuestPin(questPin, itemType .. '_later')
+    end, 0)
+end
+
+local function _HandleStationListContents(listControl, station, itemType)
+    local enabledStations = Addon.options['STATIONS']
+
+    -- If we should not hide the Quest pins for the now "enabled" station
+    if enabledStations[station] then
+        return false
+    end
+
+    local childrenCount = listControl:GetNumChildren()
+
+    -- Each tab (e.g. 1=Rune1, 2=Rune2 etc.).
+    for i = 1, childrenCount do
+        local rowControl = listControl:GetChild(i)
+
+        if rowControl then
+            _HandleQuestPin(rowControl, itemType)
+        end
+    end
+end
+
+local function _HandleEnchantingVisibleRows(list, itemType)
+    if not list or not list.activeControls then
         return
     end
 
-    -- _P('[+] Found a visible Quest pin.')
-
-    questPin:SetHidden(true)
-
-    local visibility = questPin:IsHidden() == false
-
-    -- If still is visible
-    if visibility == initialVisibility then
-        _P("[-] Sorry. Failed to hide a Quest pin: " .. tostring(questPin:GetName()))
-        _P("[-] Control: " .. tostring(rowControl:GetName()))
-
-        return
+    for _, rowControl in pairs(list.activeControls) do
+        if rowControl then
+            _HandleQuestPin(rowControl, itemType)
+        end
     end
-
-    -- _P('[+] Hid Quest pin in: ' .. tostring(station))
 end
 
 local function _SetAlchemyCraftingStationHooks()
@@ -159,7 +251,7 @@ local function _SetAlchemyCraftingStationHooks()
     local alchemyStation = Addon.data.stations.alchemy
 
     if not (alchemyStation.creationButton and alchemyStation.recipeButton) then
-        _P('[-] Not appropriate Alchemy station.')
+        _P('[-] Unexpected state of Alchemy station.')
 
         return false
     end
@@ -170,9 +262,11 @@ local function _SetAlchemyCraftingStationHooks()
         return false
     end
 
-    local listContents = list:GetChild(1)
+    -- 1="ZO_AlchemyTopLevellnventoryBackpackContents" (CT_SCROLL)
+    local solventsListContents = list:GetChild(1)
+    local reagentsListContents = list:GetChild(2)
 
-    if not listContents then
+    if not solventsListContents or not reagentsListContents then
         return false
     end
 
@@ -187,25 +281,30 @@ local function _SetAlchemyCraftingStationHooks()
 
     local enabledStations = Addon.options['STATIONS']
 
-    -- Set the hook to hide quest pins for Alchemy Solvents.
+    -- Set the hook to hide Quest pins for Alchemy Solvents.
 
-    SecurePostHook(solventsListControl, 'setupCallback', function(rowControl, data)
+    SecurePostHook(solventsListControl, 'setupCallback', function(rowControl)
         if enabledStations['ALCHEMY'] then
             return false
         end
 
-        _HandleQuestPin('alchemy_solvents', rowControl, data)
+        _HandleQuestPin(rowControl, 'alchemy_solvents')
     end)
 
-    -- Set the hook to hide quest pins for Alchemy Reagents.
+    -- Set the hook to hide Quest pins for Alchemy Reagents.
 
-    SecurePostHook(reagentsListControl, 'setupCallback', function(rowControl, data)
+    SecurePostHook(reagentsListControl, 'setupCallback', function(rowControl)
         if enabledStations['ALCHEMY'] then
             return false
         end
 
-        _HandleQuestPin('alchemy_reagents', rowControl, data)
+        _HandleQuestPin(rowControl, 'alchemy_reagents')
     end)
+
+    -- Process existing items, if possible (e.g. the first viewable list, prior scrolling).
+
+    _HandleStationListContents(solventsListContents, 'ALCHEMY', 'alchemy_solvents_initial')
+    _HandleStationListContents(reagentsListContents, 'ALCHEMY', 'alchemy_reagents_initial')
 
     alchemyStation._honestWrits = true
 
@@ -226,42 +325,68 @@ local function _SetEnchantingCraftingStationHooks()
     local enchantingStation = Addon.data.stations.enchanting
 
     if not (enchantingStation.creationButton and enchantingStation.recipeButton) then
-        _P('[-] Not appropriate Enchanting station.')
+        _P('[-] Unexpected state of Enchanting station.')
 
         return false
     end
 
-    local list = enchantingStation.inventory.list
+    local runesInventory = enchantingStation.inventory
 
-    if not list then
-        return false
+    if not runesInventory or not runesInventory.list then
+        return
     end
 
-    local listContents = list:GetChild(1)
+    local list = runesInventory.list
 
-    if not listContents then
+    -- 1="ZO_EnchantingTopLevellnventoryBackpackContents" (CT_SCROLL)
+    -- 2="ZO_EnchantingTopLevellnventoryBackpackScrollBar" (CT_SLIDER)
+    local runesListContents = list:GetChild(1)
+
+    if not runesListContents then
         return false
     end
 
     local runesListControl = list.dataTypes[1]
 
     if not runesListControl then
-        _P('[-] Could not find original setup function for Enchanting station.')
+        _P('[-] Could not find Enchanting station Runes list.')
 
         return false
     end
 
     local enabledStations = Addon.options['STATIONS']
 
-    -- Set the hook to hide quest pins for Enchanting Runes.
+    -- Set the hook to hide Quest pins for Enchanting Runes list sorting.
 
-    SecurePostHook(runesListControl, "setupCallback", function(rowControl, data)
+    SecurePostHook(runesInventory, "PerformFullRefresh", function()
+        if enabledStations['ENCHANTING'] then
+            return
+        end
+
+        -- They were mentions about caching of the controls in Enchanting, and hence we try getting them again.
+
+        if not runesInventory or not runesInventory.list then
+            return
+        end
+
+        local runesListContents = runesInventory.list:GetChild(1)
+
+        _HandleStationListContents(runesListContents, 'ENCHANTING', 'enchanting_runes_refresh_list')
+        _HandleEnchantingVisibleRows(list, 'enchanting_runes_refresh_rows')
+    end)
+
+    -- Set the hook to hide Quest pins for every Enchanting Rune list item creation.
+
+    SecurePostHook(runesListControl, "setupCallback", function(rowControl)
         if enabledStations['ENCHANTING'] then
             return false
         end
 
-        _HandleQuestPin('enchanting_runes', rowControl, data)
+        _HandleQuestPin(rowControl, 'enchanting_rune_setup')
     end)
+
+    -- Process existing items, if possible (e.g. the first viewable list, prior scrolling)
+    _HandleStationListContents(runesListContents, 'ENCHANTING', 'enchanting_runes_initial')
 
     enchantingStation._honestWrits = true
 
@@ -283,7 +408,7 @@ local function _SetSmithingCraftingStationHooks(craftingType)
     local smithingStation = Addon.data.stations.smithing
 
     if not (smithingStation.creationButton and smithingStation.recipeButton) then
-        _P('[-] Not appropriate Smithing station.')
+        _P('[-] Unexpected state of Smithing station.')
 
         return false
     end
@@ -305,14 +430,12 @@ local function _SetSmithingCraftingStationHooks(craftingType)
 
         local tabs = tabsControl:GetNumChildren()
 
-        -- Each tab (e.g. 2=Weapons, 4=Apparel etc.)
+        -- Each tab (e.g. 2=Weapons, 4=Apparel etc.).
         for i = 1, tabs do
             local tabControl = tabsControl:GetChild(i)
 
             if tabControl then
-                local name = tabControl:GetName()
-
-                _HandleQuestPin('smithing_creation_tab', tabControl, nil)
+                _HandleQuestPin(tabControl, 'smithing_creation_tab')
             end
         end
     end
@@ -325,7 +448,8 @@ local function _SetSmithingCraftingStationHooks(craftingType)
                 return false
             end
 
-            -- Set the main hook (triggers on each scrolling event)
+            -- Set the main hook (triggers on each scrolling event).
+
             SecurePostHook(list, 'setupFunction', function(control, data)
                 if enabledStations['SMITHING'] then
                     return false
@@ -334,30 +458,31 @@ local function _SetSmithingCraftingStationHooks(craftingType)
                 -- Type tabs may reset (e.g. on type change), so handle them again.
                 _HandleTypeTabs(creationPanel.tabs)
 
-                _HandleQuestPin('smithing_creation', control, data)
+                _HandleQuestPin(control, 'smithing_creation')
             end)
 
-            -- Process existing items, if possible (e.g. the first viewable list, prior scrolling)
+            -- Process existing items, if possible (e.g. the first viewable list, prior scrolling).
+
             if list.controls then
                 for _, control in pairs(list.controls) do
                     if control then
-                        _HandleQuestPin('smithing_creation_initial', control, nil)
+                        _HandleQuestPin(control, 'smithing_creation_initial')
                     end
                 end
             end
         end
     end
 
-    -- Hide already existing type tabs (e.g. Weapons, Apparel etc.)
+    -- Hide already existing type tabs (e.g. Weapons, Apparel etc.).
     _HandleTypeTabs(creationPanel.tabs)
 
-    -- Handle Pattern list (e.g. Cuirass, Sabatons, Gauntlets, Helm, Greeves, Pauldron, Girdle etc.)
+    -- Handle Pattern list (e.g. Cuirass, Sabatons, Gauntlets, Helm, Greeves, Pauldron, Girdle etc.).
     _HandlePanelList(creationPanel.patternList)
 
-    -- Handle Material list (e.g. Iron Ingot, Steel Ingot, Orichalcum Ingot, Dwraven Ingnot, Ebony Ingot etc.)
+    -- Handle Material list (e.g. Iron Ingot, Steel Ingot, Orichalcum Ingot, Dwraven Ingnot, Ebony Ingot etc.).
     _HandlePanelList(creationPanel.materialList)
 
-    -- Set hooks and initials for Smithing station
+    -- Set hooks and initials for Smithing station.
 
     smithingStation._honestWrits = true
 
@@ -396,7 +521,7 @@ local function _SetHooks()
         if craftingType == CRAFTING_TYPE_BLACKSMITHING or craftingType == CRAFTING_TYPE_WOODWORKING or craftingType == CRAFTING_TYPE_CLOTHIER then
             -- If not yet set
             if not Addon.data.stations.smithing or not Addon.data.stations.smithing._honestWrits then
-                -- On each mode change (1=Refine, 2=Creation, 3=Deconstruct, 4=Improvement, 5=Research, and 6=Diagrams)
+                -- On each mode change (1=Refine, 2=Creation, 3=Deconstruct, 4=Improvement, 5=Research, and 6=Diagrams).
                 SecurePostHook(SMITHING, 'SetMode', function(_, mode)
                     -- If not "Creation" mode
                     if mode ~= 2 then
@@ -404,8 +529,6 @@ local function _SetHooks()
                     end
 
                     Addon.data.stations.smithing = SMITHING
-
-                    -- _P('[ ] Setting hooks for Smithing station.')
 
                     _SetSmithingCraftingStationHooks(craftingType)
                 end)
